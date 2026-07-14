@@ -7,12 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       inbox_path:
-        description: "Путь к файлу в inbox (повторная обработка после сбоя)"
+        description: "Путь к файлу в inbox (через пробел, если несколько)"
         required: true
         type: string
 
 permissions:
   contents: write
+  actions: write
   id-token: write
 
 concurrency:
@@ -20,9 +21,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # claude-code-action не поддерживает событие push ("Unsupported event type: push").
+  # Эта джоба ловит push в inbox/ и только переотправляет запуск как workflow_dispatch
+  # с уже вычисленным списком файлов — саму генерацию делает джоба generate ниже.
+  dispatch:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Запустить обработку как workflow_dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(git diff --name-only HEAD^ HEAD -- inbox/ | tr '\n' ' ')
+          if [ -z "$files" ]; then
+            echo "Нет файлов inbox/ для обработки — выход." >&2
+            exit 0
+          fi
+          gh workflow run generate.yml --ref "${{ github.ref_name }}" -f inbox_path="$files"
+
   generate:
-    # защита от зацикливания: результат конвейера — тоже push в inbox/ (удаление файла)
-    if: github.actor != 'github-actions[bot]'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,20 +56,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Определить файлы для обработки
-        id: files
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            files="${{ inputs.inbox_path }}"
-          else
-            files=$(git diff --name-only HEAD^ HEAD -- inbox/ | tr '\n' ' ')
-          fi
-          if [ -z "$files" ]; then
-            echo "Нет файлов inbox/ для обработки — выход." >&2
-            exit 1
-          fi
-          echo "list=$files" >> "$GITHUB_OUTPUT"
 
       - name: Python 3.12
         uses: actions/setup-python@v5
@@ -62,7 +70,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Обработай файлы ${{ steps.files.outputs.list }} по инструкции
+            Обработай файлы ${{ github.event.inputs.inbox_path }} по инструкции
             .github/prompts/generate.md
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
