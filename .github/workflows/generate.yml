@@ -70,6 +70,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
+          # dispatch-джоба всегда переотправляет запуск от имени github-actions[bot] —
+          # без этого экшн отказывается работать для небезопасного (не-человеческого) actor'а.
+          allowed_bots: "github-actions"
           prompt: |
             Обработай файлы ${{ github.event.inputs.inbox_path }} по инструкции
             .github/prompts/generate.md
