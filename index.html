@@ -1,0 +1,400 @@
+<parameter name="content"><!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dnd-creator — новая анкета</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14151a;
+    --panel: #1c1e26;
+    --border: #2c2f3a;
+    --text: #e7e8ec;
+    --muted: #8b8fa3;
+    --accent: #7c9eff;
+    --accent-hover: #9db3ff;
+    --error: #ff6b6b;
+    --ok: #4fd68c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  main {
+    width: 100%;
+    max-width: 720px;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  p.lead {
+    color: var(--muted);
+    margin: 0 0 28px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 0 0 20px;
+  }
+  legend, label.field-label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .radio-row {
+    display: flex;
+    gap: 20px;
+  }
+  .radio-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .field { margin-bottom: 20px; }
+  .field.grow { flex: 1; }
+  .field.small { flex: 0 0 120px; }
+  input[type="text"], input[type="password"], input[type="number"], textarea {
+    width: 100%;
+    background: #0f1015;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font: inherit;
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  textarea {
+    resize: vertical;
+    font-family: inherit;
+  }
+  #anketa { min-height: 220px; }
+  #masterNotes { min-height: 80px; }
+  .token-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .token-row input { flex: 1; }
+  button {
+    font: inherit;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #262936;
+    color: var(--text);
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+  button:hover { background: #2f3342; }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0f1015;
+    font-weight: 600;
+  }
+  button.primary:hover { background: var(--accent-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .status {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+  }
+  .status.error { display: block; background: #2a1418; color: var(--error); border: 1px solid #4a2228; }
+  .status.ok { display: block; background: #12281d; color: var(--ok); border: 1px solid #1e4230; }
+  .status.pending { display: block; background: #1a1c26; color: var(--muted); border: 1px solid var(--border); }
+  .status a { color: inherit; font-weight: 600; }
+  .required::after { content: " *"; color: var(--error); }
+</style>
+</head>
+<body>
+<main>
+  <h1>dnd-creator</h1>
+  <p class="lead">Вставь анкету игрока или готового персонажа — конвейер соберёт лист и положит его в хранилище.</p>
+
+  <form id="form">
+    <div class="card">
+      <fieldset>
+        <legend>Режим</legend>
+        <div class="radio-row">
+          <label><input type="radio" name="mode" value="anketa" checked /> Анкета игрока</label>
+          <label><input type="radio" name="mode" value="ready" /> Готовый персонаж</label>
+        </div>
+        <p class="hint" id="modeHint">Claude придумает персонажа по анкете (point buy 27).</p>
+      </fieldset>
+
+      <div class="row">
+        <div class="field grow">
+          <label class="field-label" for="name">Имя персонажа (опционально)</label>
+          <input type="text" id="name" placeholder="Claude придумает сам, если не заполнено" />
+        </div>
+        <div class="field small">
+          <label class="field-label" for="level">Уровень</label>
+          <input type="number" id="level" min="1" max="20" value="3" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label required" for="anketa">Текст анкеты / персонажа</label>
+        <textarea id="anketa" placeholder="Вставь ответы игрока или готовое описание персонажа..."></textarea>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="masterNotes">Указания мастера (опционально)</label>
+        <textarea id="masterNotes" placeholder="Сеттинг, запреты, пожелания..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label" for="token">GitHub token</label>
+      <div class="token-row">
+        <input type="password" id="token" placeholder="github_pat_..." autocomplete="off" />
+        <button type="button" id="toggleToken">Показать</button>
+        <button type="button" id="rememberToken">Запомнить</button>
+      </div>
+      <p class="hint">
+        Fine-grained personal access token с доступом только к этому репозиторию
+        (permission «Contents: Read and write»). Хранится только в localStorage этого
+        браузера и уходит только на api.github.com — никогда в репозиторий.
+        Как выпустить токен — см. README.
+      </p>
+    </div>
+
+    <button type="submit" class="primary" id="submitBtn">Отправить в конвейер</button>
+    <div class="status" id="status"></div>
+  </form>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const OWNER = "Dezodemius";
+  const REPO = "dnd-creator";
+  const TOKEN_KEY = "dnd-creator-pat";
+  const API_ROOT = "https://api.github.com";
+
+  const form = document.getElementById("form");
+  const nameInput = document.getElementById("name");
+  const levelInput = document.getElementById("level");
+  const anketaInput = document.getElementById("anketa");
+  const masterNotesInput = document.getElementById("masterNotes");
+  const tokenInput = document.getElementById("token");
+  const toggleTokenBtn = document.getElementById("toggleToken");
+  const rememberTokenBtn = document.getElementById("rememberToken");
+  const submitBtn = document.getElementById("submitBtn");
+  const statusEl = document.getElementById("status");
+  const modeHint = document.getElementById("modeHint");
+
+  const MODE_HINTS = {
+    anketa: "Claude придумает персонажа по анкете (point buy 27).",
+    ready: "Текст возьмут как есть и только сконвертируют в LSS.",
+  };
+
+  // --- сохранённый токен ---------------------------------------------
+  const savedToken = localStorage.getItem(TOKEN_KEY);
+  if (savedToken) {
+    tokenInput.value = savedToken;
+    rememberTokenBtn.textContent = "Забыть";
+  }
+
+  rememberTokenBtn.addEventListener("click", () => {
+    if (localStorage.getItem(TOKEN_KEY)) {
+      localStorage.removeItem(TOKEN_KEY);
+      rememberTokenBtn.textContent = "Запомнить";
+      setStatus("pending", "Токен забыт.");
+    } else if (tokenInput.value.trim()) {
+      localStorage.setItem(TOKEN_KEY, tokenInput.value.trim());
+      rememberTokenBtn.textContent = "Забыть";
+      setStatus("ok", "Токен сохранён в этом браузере.");
+    }
+  });
+
+  toggleTokenBtn.addEventListener("click", () => {
+    const show = tokenInput.type === "password";
+    tokenInput.type = show ? "text" : "password";
+    toggleTokenBtn.textContent = show ? "Скрыть" : "Показать";
+  });
+
+  form.querySelectorAll('input[name="mode"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      modeHint.textContent = MODE_HINTS[radio.value] || "";
+    });
+  });
+
+  // --- транслитерация имени в slug -----------------------------------
+  const TRANSLIT = {
+    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z",
+    и: "i", й: "i", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r",
+    с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "shch",
+    ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+  };
+
+  function slugify(text) {
+    const lower = text.trim().toLowerCase();
+    let translit = "";
+    for (const ch of lower) {
+      translit += TRANSLIT[ch] !== undefined ? TRANSLIT[ch] : ch;
+    }
+    return translit
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "anketa";
+  }
+
+  function timestamp() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return (
+      d.getFullYear() +
+      pad(d.getMonth() + 1) +
+      pad(d.getDate()) +
+      "-" +
+      pad(d.getHours()) +
+      pad(d.getMinutes()) +
+      pad(d.getSeconds())
+    );
+  }
+
+  function utf8ToBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
+
+  function buildFileContent(mode, level, name, masterNotes, body) {
+    const frontmatter = [
+      "---",
+      `mode: ${mode}`,
+      `level: ${level}`,
+      `name: ${JSON.stringify(name || "")}`,
+      `master_notes: ${JSON.stringify(masterNotes || "")}`,
+      "---",
+      "",
+      body.trim(),
+      "",
+    ].join("\n");
+    return frontmatter;
+  }
+
+  function setStatus(kind, html) {
+    statusEl.className = "status " + kind;
+    statusEl.innerHTML = html;
+  }
+
+  function friendlyError(status, body) {
+    if (status === 401) return "Токен не принят GitHub — проверь токен.";
+    if (status === 404) return "Репозиторий не найден или токену не выдан доступ к репо (fine-grained PAT должен быть выпущен именно для dnd-creator с правом Contents: Read and write).";
+    if (status === 403) return "Доступ запрещён — у токена нет права Contents: Read and write для этого репозитория.";
+    if (status === 422) return "GitHub отклонил запрос (422) — возможно, файл с таким именем уже существует, попробуй ещё раз.";
+    return `Ошибка GitHub API (${status}): ${body || "без подробностей"}`;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const mode = form.querySelector('input[name="mode"]:checked').value;
+    const level = parseInt(levelInput.value, 10) || 3;
+    const name = nameInput.value.trim();
+    const masterNotes = masterNotesInput.value.trim();
+    const anketa = anketaInput.value.trim();
+    const token = tokenInput.value.trim();
+
+    if (!anketa) {
+      setStatus("error", "Текст анкеты обязателен.");
+      anketaInput.focus();
+      return;
+    }
+    if (!token) {
+      setStatus("error", "Нужен GitHub token.");
+      tokenInput.focus();
+      return;
+    }
+
+    const slugSource = name || "anketa";
+    const filename = `inbox/${timestamp()}-${slugify(slugSource)}.md`;
+    const content = buildFileContent(mode, level, name, masterNotes, anketa);
+    const commitMessage = `claude: анкета ${name || timestamp()}`;
+
+    submitBtn.disabled = true;
+    setStatus("pending", "Отправляю в " + filename + "…");
+
+    try {
+      const resp = await fetch(
+        `${API_ROOT}/repos/${OWNER}/${REPO}/contents/${filename}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: "Bearer " + token,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: commitMessage,
+            content: utf8ToBase64(content),
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        let bodyText = "";
+        try {
+          const errJson = await resp.json();
+          bodyText = errJson.message || "";
+        } catch (_) { /* тело не JSON */ }
+        setStatus("error", friendlyError(resp.status, bodyText));
+        return;
+      }
+
+      const actionsUrl = `https://github.com/${OWNER}/${REPO}/actions`;
+      setStatus(
+        "ok",
+        `Готово. Анкета отправлена в конвейер — следи за прогрессом на <a href="${actionsUrl}" target="_blank" rel="noopener">вкладке Actions</a>.`
+      );
+      anketaInput.value = "";
+      masterNotesInput.value = "";
+      nameInput.value = "";
+    } catch (err) {
+      setStatus("error", "Не удалось связаться с api.github.com: " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
